@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   ShieldCheck, QrCode, Search, Award, CheckCircle2, ArrowRight, 
-  FileCheck2, Smartphone, Cpu, Lock, Database, ArrowUpRight
+  FileCheck2, Smartphone, Cpu, Lock, Database, ArrowUpRight, Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 

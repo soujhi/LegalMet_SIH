@@ -178,6 +178,30 @@ class InstrumentOut(BaseModel):
     class Config:
         from_attributes = True
 
+# ----------------- PRD Section 7: Reconciliation Schemas -----------------
+
+class ReconcileRequest(BaseModel):
+    manufacturer: str
+    model_query: str
+    capacity: Optional[float] = None
+    accuracy_class: Optional[str] = None
+
+class ReconcileResponse(BaseModel):
+    status: str  # MATCH, AMBIGUOUS, NO_MATCH
+    match_score: float
+    review_required: bool
+    matched_model: Optional[Dict[str, Any]] = None
+    candidates: List[Dict[str, Any]] = []
+    source_pdf: Optional[str] = None
+    matched_fields: List[str] = []
+    unmatched_fields: List[str] = []
+    explanation: str
+
+class MatchReviewRequest(BaseModel):
+    model_id: Optional[int] = None
+    status: str = "REVIEWED"
+    remarks: Optional[str] = None
+
 # ----------------- Application Schemas -----------------
 
 class ApplicationCreate(BaseModel):
@@ -310,6 +334,13 @@ class PublicVerificationResponse(BaseModel):
     issuing_officer: Optional[str] = None
     verification_location: Optional[str] = None
     certificate_hash: Optional[str] = None
+    record_integrity_verified: Optional[bool] = True
+    tamper_detected: Optional[bool] = False
+    computed_hash: Optional[str] = None
+    stored_hash: Optional[str] = None
+    integrity_status: Optional[str] = "RECORD_INTEGRITY_VERIFIED"
+    disclaimer: Optional[str] = "Application-level cryptographic SHA-256 fingerprint verification (Tamper Detection). Not a government PKI digital signature."
+    model_approval_reference: Optional[Dict[str, Any]] = None
     tests_summary: Optional[List[Dict[str, Any]]] = None
     message: str
 

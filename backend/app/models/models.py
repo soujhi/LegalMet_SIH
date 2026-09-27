@@ -26,6 +26,7 @@ class ApplicationStatus(str, enum.Enum):
     SCHEDULED = "SCHEDULED"
     ASSIGNED = "ASSIGNED"
     FIELD_VERIFICATION = "FIELD_VERIFICATION"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
     VERIFICATION_COMPLETED = "VERIFICATION_COMPLETED"
     PASSED = "PASSED"
     FAILED = "FAILED"
@@ -33,6 +34,7 @@ class ApplicationStatus(str, enum.Enum):
     REJECTED = "REJECTED"
     CANCELLED = "CANCELLED"
     EXPIRED = "EXPIRED"
+    REVERIFICATION_DUE = "REVERIFICATION_DUE"
 
 class ApplicationType(str, enum.Enum):
     INITIAL_VERIFICATION = "INITIAL_VERIFICATION"
@@ -42,6 +44,7 @@ class VerificationResult(str, enum.Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     IN_PROGRESS = "IN_PROGRESS"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
 
 class CertificateStatus(str, enum.Enum):
     VALID = "VALID"
@@ -199,6 +202,7 @@ class Instrument(Base):
     applications = relationship("Application", back_populates="instrument")
     certificates = relationship("Certificate", back_populates="instrument")
     risk_flags = relationship("RiskFlag", back_populates="instrument")
+    model_matches = relationship("ModelMatch", back_populates="instrument")
 
 
 class Application(Base):
@@ -290,6 +294,9 @@ class VerificationSession(Base):
     officer = relationship("Officer", back_populates="verification_sessions")
     tests = relationship("VerificationTest", back_populates="session", cascade="all, delete-orphan")
     certificate = relationship("Certificate", back_populates="verification_session", uselist=False)
+    evidence = relationship("VerificationEvidence", back_populates="session", cascade="all, delete-orphan")
+    measurements = relationship("VerificationMeasurement", back_populates="session", cascade="all, delete-orphan")
+    rule_evaluations = relationship("RuleEvaluation", back_populates="session", cascade="all, delete-orphan")
 
 
 class VerificationTest(Base):
@@ -446,3 +453,111 @@ class OCRDocument(Base):
     verified_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     source_type = Column(SQLEnum(SourceProvenance), default=SourceProvenance.GOVERNMENT_PORTAL)
     created_at = Column(DateTime, default=utc_now)
+
+    reviews = relationship("OCRReview", back_populates="document", cascade="all, delete-orphan")
+
+
+# ----------------- PRD Section 31 Database Additions -----------------
+
+class VerificationEvidence(Base):
+    """
+    Evidence bundle connecting physical inspection to verification decision.
+    Front/nameplate/serial/display/seal/test-setup photos & documents with SHA-256 integrity.
+    """
+    __tablename__ = "verification_evidence"
+
+    id = Column(Integer, primary_key=True, index=True)
+    verification_id = Column(Integer, ForeignKey("verification_sessions.id"), nullable=False)
+    evidence_type = Column(String(100), nullable=False)  # FRONT_NAMEPLATE, SERIAL_NUMBER, SEAL_WIRE, TEST_SETUP, SUPPORTING_DOC
+    file_path = Column(String(500), nullable=False)
+    sha256 = Column(String(64), nullable=False)
+    captured_at = Column(DateTime, default=utc_now)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    uploaded_by = Column(String(255), nullable=True)
+
+    session = relationship("VerificationSession", back_populates="evidence")
+
+
+class VerificationMeasurement(Base):
+    """
+    Structured measurement entries with deterministic error calculation and unit normalization.
+    """
+    __tablename__ = "verification_measurements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    verification_id = Column(Integer, ForeignKey("verification_sessions.id"), nullable=False)
+    test_name = Column(String(150), nullable=False)
+    reference_value = Column(Float, nullable=False)
+    reference_unit = Column(String(20), default="kg")
+    observed_value = Column(Float, nullable=False)
+    observed_unit = Column(String(20), default="kg")
+    calculated_error = Column(Float, nullable=False)
+    result = Column(String(50), nullable=False)  # PASS, FAIL, REVIEW_REQUIRED
+
+    session = relationship("VerificationSession", back_populates="measurements")
+
+
+class RuleEvaluation(Base):
+    """
+    Audit record linking physical observation to statutory rule, MPE, and explainable decision.
+    """
+    __tablename__ = "rule_evaluations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    verification_id = Column(Integer, ForeignKey("verification_sessions.id"), nullable=False)
+    rule_id = Column(String(100), nullable=False)
+    input_snapshot = Column(JSON, nullable=True)
+    mpe_value = Column(Float, nullable=False)
+    mpe_unit = Column(String(20), default="kg")
+    calculated_error = Column(Float, nullable=False)
+    decision = Column(String(50), nullable=False)  # PASS, FAIL, REVIEW_REQUIRED
+    source_reference = Column(String(500), nullable=False)
+    evaluated_at = Column(DateTime, default=utc_now)
+
+    session = relationship("VerificationSession", back_populates="rule_evaluations")
+
+
+class ModelMatch(Base):
+    """
+    Reconciliation record between physical trader instrument and official DoCA Model Approval catalog.
+    Distinguishes MATCH (source PDF linked), AMBIGUOUS (manual review required), and NO_MATCH.
+    """
+    __tablename__ = "model_matches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    instrument_id = Column(Integer, ForeignKey("instruments.id"), nullable=False)
+    model_id = Column(Integer, ForeignKey("instrument_models.id"), nullable=True)
+    match_method = Column(String(50), default="EXACT")  # EXACT, FUZZY, MANUAL
+    match_score = Column(Float, default=1.0)
+    status = Column(String(50), default="MATCH")  # MATCH, AMBIGUOUS, NO_MATCH, REVIEWED
+    review_required = Column(Boolean, default=False)
+    reviewed_by = Column(String(255), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    matched_fields = Column(JSON, nullable=True)
+    unmatched_fields = Column(JSON, nullable=True)
+    source_pdf = Column(String(255), nullable=True)
+
+    instrument = relationship("Instrument", back_populates="model_matches")
+    model = relationship("InstrumentModel")
+
+
+class OCRReview(Base):
+    """
+    Human-in-the-loop review for legacy scanned verification documents.
+    Uncertain OCR fields (< 80% confidence) are routed for human sign-off before entering rule engine.
+    """
+    __tablename__ = "ocr_review"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("ocr_documents.id"), nullable=False)
+    field_name = Column(String(100), nullable=False)  # capacity, accuracy_class, manufacturer, model, etc.
+    raw_value = Column(String(255), nullable=True)
+    normalized_value = Column(String(255), nullable=True)
+    confidence = Column(Float, default=0.0)
+    review_status = Column(String(50), default="PENDING_REVIEW")  # PENDING_REVIEW, HUMAN_VERIFIED, REJECTED
+    verified_value = Column(String(255), nullable=True)
+    verified_by = Column(String(255), nullable=True)
+    verified_at = Column(DateTime, nullable=True)
+
+    document = relationship("OCRDocument", back_populates="reviews")

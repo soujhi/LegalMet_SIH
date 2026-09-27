@@ -203,3 +203,71 @@ CREATE TABLE IF NOT EXISTS ocr_documents (
     source_type VARCHAR(50) DEFAULT 'GOVERNMENT_PORTAL',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- PRD Section 31: Evidence-Driven Architecture Additions
+
+CREATE TABLE IF NOT EXISTS verification_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verification_id INTEGER NOT NULL REFERENCES verification_sessions(id),
+    evidence_type VARCHAR(100) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    sha256 VARCHAR(64) NOT NULL,
+    captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    latitude REAL,
+    longitude REAL,
+    uploaded_by VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS verification_measurements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verification_id INTEGER NOT NULL REFERENCES verification_sessions(id),
+    test_name VARCHAR(150) NOT NULL,
+    reference_value REAL NOT NULL,
+    reference_unit VARCHAR(20) DEFAULT 'kg',
+    observed_value REAL NOT NULL,
+    observed_unit VARCHAR(20) DEFAULT 'kg',
+    calculated_error REAL NOT NULL,
+    result VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS rule_evaluations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verification_id INTEGER NOT NULL REFERENCES verification_sessions(id),
+    rule_id VARCHAR(100) NOT NULL,
+    input_snapshot TEXT,
+    mpe_value REAL NOT NULL,
+    mpe_unit VARCHAR(20) DEFAULT 'kg',
+    calculated_error REAL NOT NULL,
+    decision VARCHAR(50) NOT NULL,
+    source_reference VARCHAR(500) NOT NULL,
+    evaluated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS model_matches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    instrument_id INTEGER NOT NULL REFERENCES instruments(id),
+    model_id INTEGER REFERENCES instrument_models(id),
+    match_method VARCHAR(50) DEFAULT 'EXACT',
+    match_score REAL DEFAULT 1.0,
+    status VARCHAR(50) DEFAULT 'MATCH',
+    review_required BOOLEAN DEFAULT FALSE,
+    reviewed_by VARCHAR(255),
+    reviewed_at TIMESTAMP,
+    matched_fields TEXT,
+    unmatched_fields TEXT,
+    source_pdf VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS ocr_review (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_id INTEGER NOT NULL REFERENCES ocr_documents(id),
+    field_name VARCHAR(100) NOT NULL,
+    raw_value VARCHAR(255),
+    normalized_value VARCHAR(255),
+    confidence REAL DEFAULT 0.0,
+    review_status VARCHAR(50) DEFAULT 'PENDING_REVIEW',
+    verified_value VARCHAR(255),
+    verified_by VARCHAR(255),
+    verified_at TIMESTAMP
+);
+

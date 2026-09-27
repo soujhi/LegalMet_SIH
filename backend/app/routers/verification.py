@@ -4,12 +4,14 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 import random
 import uuid
+import hashlib
 
 from app.core.database import get_db
 from app.models.models import (
     Application, ApplicationStatus, ApplicationStatusHistory, VerificationSession,
     VerificationTest, VerificationResult, Certificate, CertificateStatus,
-    Instrument, Officer, User, UserRole, RiskFlag
+    Instrument, Officer, User, UserRole, RiskFlag,
+    VerificationEvidence, VerificationMeasurement, RuleEvaluation
 )
 from app.schemas.schemas import (
     VerificationStartRequest, VerificationCompleteRequest, ApplicationOut, CertificateOut
@@ -128,6 +130,10 @@ def complete_verification(
     
     # Clear any previous test observations for this session
     db.query(VerificationTest).filter(VerificationTest.session_id == session.id).delete()
+    db.query(VerificationMeasurement).filter(VerificationMeasurement.verification_id == session.id).delete()
+    db.query(RuleEvaluation).filter(RuleEvaluation.verification_id == session.id).delete()
+
+    now = datetime.now(timezone.utc)
 
     for obs in req.observations:
         eval_res = rule_engine.evaluate_test(
@@ -154,18 +160,70 @@ def complete_verification(
             remarks=obs.remarks or eval_res["explanation"]
         )
         db.add(test_record)
+
+        # PRD Section 10 & 31: Structured Measurement Entry
+        measurement = VerificationMeasurement(
+            verification_id=session.id,
+            test_name=obs.test_name,
+            reference_value=obs.expected_value,
+            reference_unit=obs.unit or unit,
+            observed_value=obs.observed_value,
+            observed_unit=obs.unit or unit,
+            calculated_error=eval_res["error_calculated"],
+            result=eval_res["decision"]
+        )
+        db.add(measurement)
+
+        # PRD Section 11 & 31: Traceable Rule Evaluation Snapshot
+        rule_eval = RuleEvaluation(
+            verification_id=session.id,
+            rule_id=eval_res["rule_code"],
+            input_snapshot={
+                "accuracy_class": accuracy_class,
+                "capacity": capacity,
+                "scale_interval_e": scale_interval_e,
+                "test_load": obs.test_load,
+                "observed_value": obs.observed_value,
+                "unit": obs.unit or unit
+            },
+            mpe_value=eval_res["tolerance_mpe"],
+            mpe_unit=eval_res["unit"],
+            calculated_error=eval_res["error_calculated"],
+            decision=eval_res["decision"],
+            source_reference=eval_res["rule_source_reference"],
+            evaluated_at=now
+        )
+        db.add(rule_eval)
+
         recorded_tests.append(eval_res)
 
-        if eval_res["result"] == VerificationResult.FAIL:
+        if eval_res["result"] in [VerificationResult.FAIL, VerificationResult.REVIEW_REQUIRED]:
             is_overall_pass = False
 
-    now = datetime.now(timezone.utc)
     session.completed_at = now
     session.overall_result = VerificationResult.PASS if is_overall_pass else VerificationResult.FAIL
     session.remarks = req.remarks
-    session.photos_json = req.photos or [
+    
+    # PRD Section 9: Evidence Bundle with SHA-256 Hashes
+    photos = req.photos or [
         "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80"
     ]
+    session.photos_json = photos
+    db.query(VerificationEvidence).filter(VerificationEvidence.verification_id == session.id).delete()
+    for idx, photo_path in enumerate(photos):
+        evidence_hash = hashlib.sha256(f"{session.id}_{photo_path}_{idx}".encode("utf-8")).hexdigest()
+        evidence = VerificationEvidence(
+            verification_id=session.id,
+            evidence_type="FRONT_NAMEPLATE" if idx == 0 else "TEST_SETUP_PHOTO",
+            file_path=photo_path,
+            sha256=evidence_hash,
+            captured_at=now,
+            latitude=session.latitude,
+            longitude=session.longitude,
+            uploaded_by=current_user.full_name
+        )
+        db.add(evidence)
+
     session.signature_data = req.signature_data
     if req.latitude:
         session.latitude = req.latitude

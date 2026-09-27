@@ -2,20 +2,22 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pathlib import Path
+from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.config import DOCA_PDFS_DIR
 from app.models.models import (
-    Instrument, InstrumentCategory, InstrumentModel, User, UserRole, SourceProvenance
+    Instrument, InstrumentCategory, InstrumentModel, User, UserRole, SourceProvenance, ModelMatch
 )
 from app.schemas.schemas import (
     InstrumentCreate, InstrumentOut, InstrumentCategoryOut, InstrumentModelOut,
-    ModelUpdate, DataQualityStats
+    ModelUpdate, DataQualityStats, ReconcileRequest, ReconcileResponse, MatchReviewRequest
 )
 from app.routers.auth import get_current_user
 from app.services.audit_service import audit_service
+from app.services.reconciliation_service import reconciliation_service
 
 router = APIRouter(prefix="/instruments", tags=["Instruments"])
 
@@ -275,3 +277,158 @@ def update_instrument(
     db.commit()
     db.refresh(inst)
     return inst
+
+# ----------------- PRD Section 7: Official Model Reconciliation Endpoints -----------------
+
+@router.post("/reconcile", response_model=ReconcileResponse)
+def reconcile_model_query(
+    req: ReconcileRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Statutory Model Reconciliation Lookup.
+    Compares Manufacturer + Model against the 451 DoCA Gazette records.
+    Returns MATCH, AMBIGUOUS, or NO_MATCH.
+    """
+    result = reconciliation_service.reconcile(
+        db=db,
+        manufacturer=req.manufacturer,
+        model_query=req.model_query,
+        capacity=req.capacity,
+        accuracy_class=req.accuracy_class
+    )
+    return result
+
+@router.post("/{id}/reconcile")
+def reconcile_instrument(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Reconciles a registered physical instrument against the DoCA catalog and persists an audit match record.
+    """
+    inst = db.query(Instrument).filter(Instrument.id == id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Instrument not found")
+
+    # If instrument has an existing model, use it as query; otherwise use category/asset tags
+    query_model = inst.model.model_series if inst.model else (inst.asset_number or "")
+    query_manuf = inst.model.manufacturer if inst.model else ""
+
+    result = reconciliation_service.reconcile(
+        db=db,
+        manufacturer=query_manuf,
+        model_query=query_model,
+        capacity=inst.capacity,
+        accuracy_class=inst.accuracy_class
+    )
+
+    match_record = reconciliation_service.record_instrument_match(
+        db=db,
+        instrument=inst,
+        reconciliation_result=result,
+        reviewer_name=current_user.full_name if current_user.role in [UserRole.ADMIN, UserRole.LMO] else None
+    )
+
+    return {
+        "instrument_id": inst.id,
+        "match_id": match_record.id,
+        "status": match_record.status,
+        "match_score": match_record.match_score,
+        "review_required": match_record.review_required,
+        "model_id": match_record.model_id,
+        "source_pdf": match_record.source_pdf,
+        "reconciliation": result
+    }
+
+@router.get("/{id}/matches")
+def get_instrument_matches(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieves all model reconciliation audit records for an instrument.
+    """
+    inst = db.query(Instrument).filter(Instrument.id == id).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Instrument not found")
+
+    matches = db.query(ModelMatch).filter(ModelMatch.instrument_id == id).order_by(ModelMatch.id.desc()).all()
+    return [
+        {
+            "id": m.id,
+            "instrument_id": m.instrument_id,
+            "model_id": m.model_id,
+            "match_method": m.match_method,
+            "match_score": m.match_score,
+            "status": m.status,
+            "review_required": m.review_required,
+            "reviewed_by": m.reviewed_by,
+            "reviewed_at": m.reviewed_at,
+            "matched_fields": m.matched_fields,
+            "unmatched_fields": m.unmatched_fields,
+            "source_pdf": m.source_pdf,
+            "model_details": {
+                "manufacturer": m.model.manufacturer,
+                "model_series": m.model.model_series,
+                "approval_mark": m.model.approval_mark,
+                "accuracy_class": m.model.accuracy_class
+            } if m.model else None
+        }
+        for m in matches
+    ]
+
+@router.put("/matches/{match_id}/review")
+def review_model_match(
+    match_id: int,
+    req: MatchReviewRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Officer review / sign-off on ambiguous or no-match model reconciliations.
+    """
+    if current_user.role not in [UserRole.ADMIN, UserRole.LMO]:
+        raise HTTPException(status_code=403, detail="Only Legal Metrology Officers or Admins can review model matches")
+
+    match = db.query(ModelMatch).filter(ModelMatch.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match record not found")
+
+    if req.model_id:
+        model = db.query(InstrumentModel).filter(InstrumentModel.id == req.model_id).first()
+        if not model:
+            raise HTTPException(status_code=404, detail="Target model approval not found")
+        match.model_id = model.id
+        match.source_pdf = model.source_pdf
+        # Also assign to instrument
+        match.instrument.model_id = model.id
+
+    match.status = req.status
+    match.review_required = False
+    match.reviewed_by = current_user.full_name
+    match.reviewed_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(match)
+
+    audit_service.log_action(
+        db,
+        action="MODEL_MATCH_REVIEWED",
+        entity_type="MODEL_MATCH",
+        entity_id=str(match.id),
+        user_id=current_user.id,
+        new_values={"status": match.status, "model_id": match.model_id, "reviewed_by": match.reviewed_by}
+    )
+
+    return {
+        "success": True,
+        "match_id": match.id,
+        "status": match.status,
+        "review_required": match.review_required,
+        "model_id": match.model_id,
+        "reviewed_by": match.reviewed_by
+    }
+

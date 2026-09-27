@@ -180,15 +180,59 @@ export const PublicVerify: React.FC = () => {
                   <span className="text-sm font-bold text-slate-900">{data.issuing_officer}</span>
                   <span className="text-xs text-slate-500 block">{data.issuing_authority}</span>
                 </div>
-                <div className="p-2 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1">
-                  <ShieldCheck className="h-4 w-4" /> Digitally Authenticated
+                <div className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1 ${
+                  data.record_integrity_verified ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                }`}>
+                  <ShieldCheck className="h-4 w-4" />
+                  {data.record_integrity_verified ? 'Record Integrity Verified' : 'Integrity Mismatch'}
                 </div>
               </div>
+
+              {/* Statutory DoCA Model Approval Reference Layer */}
+              {data.model_approval_reference && (
+                <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                      <Cpu className="h-4 w-4 text-blue-700" />
+                      Statutory DoCA Model Approval Reference
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                      Layer A Reference
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 block">Approval Mark / Certificate:</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        {data.model_approval_reference.approval_mark || data.model_approval_reference.certificate_no || 'Central DoCA Approved'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Approved Specifications:</span>
+                      <span className="font-semibold text-slate-900">
+                        {data.model_approval_reference.accuracy_class} | Max: {data.model_approval_reference.max_capacity} (e = {data.model_approval_reference.verification_scale_interval})
+                      </span>
+                    </div>
+                  </div>
+                  {data.model_approval_reference.source_pdf && (
+                    <div className="pt-1">
+                      <a
+                        href={`http://127.0.0.1:8000/api/instruments/models/${data.model_approval_reference.model_id}/source-pdf`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 underline"
+                      >
+                        <Award className="h-3.5 w-3.5" /> View Official Gazette PDF Certificate
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Test Observations Summary */}
               {data.tests_summary && data.tests_summary.length > 0 && (
                 <div>
-                  <h4 className="font-bold text-sm text-slate-900 mb-2">Statutory Field Observations</h4>
+                  <h4 className="font-bold text-sm text-slate-900 mb-2">Statutory Field Observations & MPE Tolerances</h4>
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
                     <table className="min-w-full divide-y divide-slate-200 text-xs text-left">
                       <thead className="bg-slate-100 text-slate-700 font-semibold">
@@ -218,13 +262,24 @@ export const PublicVerify: React.FC = () => {
                 </div>
               )}
 
-              {/* Cryptographic Hash */}
-              <div className="p-3 bg-slate-900 text-slate-300 rounded-xl text-[11px] font-mono flex items-center justify-between overflow-hidden">
-                <div className="flex items-center gap-2 truncate">
-                  <Lock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                  <span className="truncate">SHA-256: {data.certificate_hash}</span>
+              {/* Cryptographic Hash Verification Box */}
+              <div className="space-y-1.5">
+                <div className={`p-3 rounded-xl text-[11px] font-mono flex items-center justify-between overflow-hidden ${
+                  data.record_integrity_verified ? 'bg-slate-900 text-slate-300' : 'bg-rose-950 text-rose-200'
+                }`}>
+                  <div className="flex items-center gap-2 truncate">
+                    <Lock className={`h-3.5 w-3.5 shrink-0 ${data.record_integrity_verified ? 'text-amber-400' : 'text-rose-400'}`} />
+                    <span className="truncate">SHA-256: {data.certificate_hash}</span>
+                  </div>
+                  <span className={`shrink-0 font-bold ml-2 ${
+                    data.record_integrity_verified ? 'text-emerald-400' : 'text-rose-400'
+                  }`}>
+                    {data.record_integrity_verified ? 'RECORD INTEGRITY VERIFIED' : 'TAMPER DETECTED'}
+                  </span>
                 </div>
-                <span className="shrink-0 text-emerald-400 font-bold ml-2">VERIFIED RECORD</span>
+                <p className="text-[10px] text-slate-500 italic text-center">
+                  {data.disclaimer || 'Application-level cryptographic SHA-256 fingerprint verification (Tamper Detection). Not a government PKI digital signature.'}
+                </p>
               </div>
             </div>
           </div>

@@ -224,6 +224,25 @@ export interface PublicVerification {
   issuing_officer?: string;
   verification_location?: string;
   certificate_hash?: string;
+  record_integrity_verified?: boolean;
+  tamper_detected?: boolean;
+  computed_hash?: string;
+  stored_hash?: string;
+  integrity_status?: string;
+  disclaimer?: string;
+  model_approval_reference?: {
+    model_id: number;
+    certificate_no?: string;
+    approval_mark?: string;
+    manufacturer: string;
+    brand: string;
+    model_series: string;
+    accuracy_class: string;
+    max_capacity: string;
+    verification_scale_interval: string;
+    source_pdf?: string;
+    provenance: string;
+  };
   tests_summary?: any[];
   message: string;
 }

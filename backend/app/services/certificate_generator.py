@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import uuid
+from typing import Optional, Any
 from datetime import datetime, timezone, timedelta
 import qrcode
 from reportlab.lib.pagesizes import letter
@@ -35,7 +36,47 @@ class CertificateGenerator:
         return str(filepath)
 
     @staticmethod
-    def compute_certificate_hash(cert_data: dict) -> str:
+    def _normalize_iso_date(dt_val: Any) -> str:
+        if isinstance(dt_val, datetime):
+            return dt_val.strftime("%Y-%m-%dT%H:%M:%SZ")
+        elif isinstance(dt_val, str):
+            clean = dt_val.strip().replace(" ", "T")
+            if len(clean) >= 19:
+                return clean[:19] + "Z"
+            return clean
+        return str(dt_val)
+
+    @classmethod
+    def build_canonical_hash_payload(
+        cls,
+        certificate_number: str,
+        serial_number: Optional[str],
+        category: Optional[str],
+        model_series: Optional[str],
+        capacity: str,
+        issue_date: Any,
+        valid_until: Any,
+        issuing_officer: str,
+        verification_location: str
+    ) -> dict:
+        """
+        Builds standardized canonical dictionary for deterministic cryptographic hashing.
+        Aligns keys between certificate generator, field verification router, and public verify.
+        """
+        return {
+            "capacity": str(capacity or "").strip(),
+            "category": str(category or "").strip(),
+            "certificate_number": str(certificate_number or "").strip(),
+            "issue_date": cls._normalize_iso_date(issue_date),
+            "issuing_officer": str(issuing_officer or "").strip(),
+            "model_series": str(model_series or "").strip(),
+            "serial_number": str(serial_number or "").strip(),
+            "valid_until": cls._normalize_iso_date(valid_until),
+            "verification_location": str(verification_location or "").strip()
+        }
+
+    @classmethod
+    def compute_certificate_hash(cls, cert_data: dict) -> str:
         """Calculates cryptographic SHA-256 fingerprint of certificate details."""
         sorted_payload = json.dumps(cert_data, sort_keys=True)
         return hashlib.sha256(sorted_payload.encode("utf-8")).hexdigest()
@@ -56,22 +97,29 @@ class CertificateGenerator:
         Generates official Legal Metrology Certificate PDF and returns:
         (pdf_relative_path, qr_relative_path, certificate_hash)
         """
-        cert_data_for_hash = {
-            "certificate_number": certificate_number,
-            "serial_number": instrument_dict.get("serial_number"),
-            "category": instrument_dict.get("category_name"),
-            "model": instrument_dict.get("model_name"),
-            "capacity": f"{instrument_dict.get('capacity')} {instrument_dict.get('unit')}",
-            "issue_date": issue_date.isoformat(),
-            "valid_until": valid_until.isoformat(),
-            "issuing_officer": officer_name,
-            "verification_location": verification_location
-        }
+        model_val = (
+            instrument_dict.get("model_series")
+            or instrument_dict.get("model_name")
+            or instrument_dict.get("model")
+            or "N/A"
+        )
+        cert_data_for_hash = cls.build_canonical_hash_payload(
+            certificate_number=certificate_number,
+            serial_number=instrument_dict.get("serial_number"),
+            category=instrument_dict.get("category_name"),
+            model_series=model_val,
+            capacity=f"{instrument_dict.get('capacity')} {instrument_dict.get('unit')}",
+            issue_date=issue_date.isoformat(),
+            valid_until=valid_until.isoformat(),
+            issuing_officer=officer_name,
+            verification_location=verification_location
+        )
         cert_hash = cls.compute_certificate_hash(cert_data_for_hash)
 
         safe_cert_name = certificate_number.replace("/", "_").replace("\\", "_")
         qr_filename = f"qr_{safe_cert_name}.png"
         qr_file_path = cls.generate_qr_code(qr_url, qr_filename)
+
 
         pdf_filename = f"cert_{safe_cert_name}.pdf"
         pdf_file_path = CERTIFICATES_DIR / pdf_filename

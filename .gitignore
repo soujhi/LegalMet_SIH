@@ -36,3 +36,9 @@ wheels/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Storage Artifacts
+backend/storage/certificates/*.pdf
+backend/storage/qr_codes/*.png
+
+
