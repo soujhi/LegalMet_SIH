@@ -32,15 +32,25 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center text-xs text-slate-500">Loading LegalMet Verify session...</div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-xs text-slate-500 gap-2">
+        <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+        <span>Loading LegalMet Verify session...</span>
+      </div>
+    );
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+  // Admin has overarching supervisory access across all portals
+  const isAllowed = !allowedRoles || allowedRoles.includes(user.role) || user.role === 'ADMIN';
+
+  if (!isAllowed) {
+    if (user.role === 'TRADER') return <Navigate to="/trader/dashboard" replace />;
+    if (user.role === 'LMO') return <Navigate to="/lmo/dashboard" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -56,7 +66,9 @@ export const App: React.FC = () => {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<PublicHome />} />
+              <Route path="/verify" element={<PublicVerify />} />
               <Route path="/verify/:certNo" element={<PublicVerify />} />
+              <Route path="/verify/*" element={<PublicVerify />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
 

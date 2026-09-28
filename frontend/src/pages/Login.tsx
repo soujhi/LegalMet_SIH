@@ -16,9 +16,11 @@ export const Login: React.FC = () => {
     setError('');
     setIsSubmitting(true);
     try {
-      await login(email, password);
-      // Route appropriately based on saved user state
-      navigate('/');
+      const loggedUser = await login(email, password);
+      if (loggedUser.role === 'TRADER') navigate('/trader/dashboard');
+      else if (loggedUser.role === 'LMO') navigate('/lmo/dashboard');
+      else if (loggedUser.role === 'ADMIN') navigate('/admin/dashboard');
+      else navigate('/');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please verify credentials.');
     } finally {

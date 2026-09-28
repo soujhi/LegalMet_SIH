@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, Download, 
-  Calendar, MapPin, Award, Scale, Cpu, Search, Lock, ArrowLeft 
+  Calendar, MapPin, Award, Scale, Cpu, Search, Lock, ArrowLeft, RefreshCw 
 } from 'lucide-react';
 import { ApiClient } from '../api/client';
 import { PublicVerification } from '../types';
 
 export const PublicVerify: React.FC = () => {
-  const { certNo } = useParams<{ certNo: string }>();
+  const params = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Extract certificate number from params (:certNo, wildcard *), path, or query string
+  const queryParam = new URLSearchParams(location.search).get('cert') || new URLSearchParams(location.search).get('q');
+  const pathParam = params.certNo || params['*'] || location.pathname.replace(/^\/verify\/?/, '');
+  const activeCertNo = queryParam || (pathParam ? decodeURIComponent(pathParam).trim() : '');
+
   const [data, setData] = useState<PublicVerification | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [searchInput, setSearchInput] = useState<string>(certNo || '');
+  const [isLoading, setIsLoading] = useState<boolean>(!!activeCertNo);
+  const [searchInput, setSearchInput] = useState<string>(activeCertNo);
 
   const loadVerification = async (numberToVerify: string) => {
+    if (!numberToVerify.trim()) return;
     setIsLoading(true);
     try {
-      const res = await ApiClient.verifyPublic(numberToVerify);
+      const res = await ApiClient.verifyPublic(numberToVerify.trim());
       setData(res);
     } catch (err) {
       setData({
@@ -31,16 +40,22 @@ export const PublicVerify: React.FC = () => {
   };
 
   useEffect(() => {
-    if (certNo) {
-      loadVerification(certNo);
+    if (activeCertNo) {
+      setSearchInput(activeCertNo);
+      loadVerification(activeCertNo);
     }
-  }, [certNo]);
+  }, [activeCertNo]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchInput.trim()) {
-      loadVerification(searchInput.trim());
+      navigate(`/verify/${encodeURIComponent(searchInput.trim())}`);
     }
+  };
+
+  const handleQuickVerify = (sample: string) => {
+    setSearchInput(sample);
+    navigate(`/verify/${encodeURIComponent(sample)}`);
   };
 
   return (
@@ -54,18 +69,49 @@ export const PublicVerify: React.FC = () => {
           <form onSubmit={handleSearchSubmit} className="flex gap-2 w-full sm:w-auto">
             <input
               type="text"
-              placeholder="Search Certificate No..."
+              placeholder="Search Certificate No. (e.g. 141701 or 520900)..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 w-full sm:w-64"
             />
             <button
               type="submit"
-              className="px-3 py-2 bg-[#0F2942] text-white text-xs font-semibold rounded-lg hover:bg-slate-800"
+              className="px-3 py-2 bg-[#0F2942] text-white text-xs font-semibold rounded-lg hover:bg-slate-800 shrink-0"
             >
               Verify
             </button>
           </form>
+        </div>
+
+        {/* Quick Sample Selector Bar */}
+        <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+          <span className="font-semibold text-slate-700">Verified Test Samples:</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleQuickVerify("141701")}
+              className="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold border border-blue-200"
+            >
+              141701 (State Record)
+            </button>
+            <button
+              onClick={() => handleQuickVerify("141710")}
+              className="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold border border-blue-200"
+            >
+              141710 (State Record)
+            </button>
+            <button
+              onClick={() => handleQuickVerify("LM/JH/2026/520900")}
+              className="px-2 py-1 rounded bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold border border-emerald-200"
+            >
+              LM/JH/2026/520900 (QR Digital)
+            </button>
+            <button
+              onClick={() => handleQuickVerify("520900")}
+              className="px-2 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold border border-slate-200"
+            >
+              520900
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -81,8 +127,24 @@ export const PublicVerify: React.FC = () => {
             </div>
             <h2 className="text-xl font-extrabold text-slate-900">Certificate Not Found or Unverified</h2>
             <p className="text-sm text-slate-600 mt-2 max-w-md mx-auto">
-              No official Legal Metrology verification record was found for <span className="font-mono font-bold text-slate-900">"{certNo || searchInput}"</span>.
+              No official Legal Metrology verification record was found for <span className="font-mono font-bold text-slate-900">"{activeCertNo || searchInput || 'Query'}"</span>.
             </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs">
+              <span className="text-slate-500">Try verifying one of these valid sample records:</span>
+              <button
+                onClick={() => handleQuickVerify("141701")}
+                className="text-blue-600 font-bold underline"
+              >
+                141701
+              </button>
+              <span>•</span>
+              <button
+                onClick={() => handleQuickVerify("LM/JH/2026/520900")}
+                className="text-emerald-700 font-bold underline"
+              >
+                LM/JH/2026/520900
+              </button>
+            </div>
             <div className="mt-6 p-4 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-800 text-left max-w-md mx-auto">
               <strong>Caution:</strong> Weighing and measuring instruments without verified statutory certification may be non-compliant under the Legal Metrology Act, 2009.
             </div>

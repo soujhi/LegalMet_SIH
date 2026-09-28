@@ -10,11 +10,24 @@ export const PublicHome: React.FC = () => {
   const [certInput, setCertInput] = useState('');
   const navigate = useNavigate();
   const { quickLogin } = useAuth();
+  const [launchingRole, setLaunchingRole] = useState<string | null>(null);
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
     if (certInput.trim()) {
       navigate(`/verify/${encodeURIComponent(certInput.trim())}`);
+    }
+  };
+
+  const handleLaunch = async (role: 'TRADER' | 'ADMIN' | 'LMO', path: string) => {
+    setLaunchingRole(role);
+    try {
+      await quickLogin(role);
+      navigate(path);
+    } catch (err) {
+      console.error('Portal launch failed:', err);
+    } finally {
+      setLaunchingRole(null);
     }
   };
 
@@ -53,7 +66,7 @@ export const PublicHome: React.FC = () => {
               <div className="relative flex-1">
                 <input
                   type="text"
-                  placeholder="Enter Certificate No. (e.g., LM/JH/2026/141701 or 141701)"
+                  placeholder="Enter Certificate No. (e.g. 141701 or LM/JH/2026/520900)"
                   value={certInput}
                   onChange={(e) => setCertInput(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
@@ -68,8 +81,14 @@ export const PublicHome: React.FC = () => {
               </button>
             </form>
 
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-500 px-1">
-              <span>Sample Numbers: <button onClick={() => setCertInput("141701")} className="text-blue-600 font-semibold underline">141701</button>, <button onClick={() => setCertInput("141710")} className="text-blue-600 font-semibold underline">141710</button></span>
+            <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-slate-500 px-1 gap-2">
+              <span className="flex flex-wrap items-center gap-1.5">
+                <span className="text-slate-400 font-medium">Sample Numbers:</span>
+                <button type="button" onClick={() => setCertInput("141701")} className="px-1.5 py-0.5 bg-slate-100 hover:bg-blue-50 text-blue-600 rounded font-semibold border border-slate-200">141701 (State Record)</button>
+                <button type="button" onClick={() => setCertInput("141710")} className="px-1.5 py-0.5 bg-slate-100 hover:bg-blue-50 text-blue-600 rounded font-semibold border border-slate-200">141710</button>
+                <button type="button" onClick={() => setCertInput("LM/JH/2026/520900")} className="px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded font-semibold border border-emerald-200">LM/JH/2026/520900 (Digital QR)</button>
+                <button type="button" onClick={() => setCertInput("520900")} className="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-semibold border border-slate-200">520900</button>
+              </span>
               <span className="flex items-center gap-1"><Lock className="h-3 w-3 text-emerald-600" /> SHA-256 Tamper-Proof</span>
             </div>
           </div>
@@ -97,10 +116,11 @@ export const PublicHome: React.FC = () => {
             </div>
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
               <button
-                onClick={() => { quickLogin('TRADER'); navigate('/trader/dashboard'); }}
+                onClick={() => handleLaunch('TRADER', '/trader/dashboard')}
+                disabled={launchingRole === 'TRADER'}
                 className="text-sm font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1"
               >
-                Launch Trader Portal <ArrowRight className="h-4 w-4" />
+                {launchingRole === 'TRADER' ? 'Opening...' : 'Launch Trader Portal'} <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -118,10 +138,11 @@ export const PublicHome: React.FC = () => {
             </div>
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
               <button
-                onClick={() => { quickLogin('ADMIN'); navigate('/admin/dashboard'); }}
+                onClick={() => handleLaunch('ADMIN', '/admin/dashboard')}
+                disabled={launchingRole === 'ADMIN'}
                 className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
               >
-                Launch Admin Portal <ArrowRight className="h-4 w-4" />
+                {launchingRole === 'ADMIN' ? 'Opening...' : 'Launch Admin Portal'} <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -139,10 +160,11 @@ export const PublicHome: React.FC = () => {
             </div>
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
               <button
-                onClick={() => { quickLogin('LMO'); navigate('/lmo/dashboard'); }}
+                onClick={() => handleLaunch('LMO', '/lmo/dashboard')}
+                disabled={launchingRole === 'LMO'}
                 className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
               >
-                Launch LMO Field App <ArrowRight className="h-4 w-4" />
+                {launchingRole === 'LMO' ? 'Opening...' : 'Launch LMO Field App'} <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>

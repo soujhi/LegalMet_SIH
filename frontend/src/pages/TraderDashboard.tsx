@@ -37,6 +37,15 @@ export const TraderDashboard: React.FC = () => {
     fetchData();
   }, []);
 
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+        <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+        <p className="text-xs text-slate-500 font-semibold">Loading Trader Portal & Assets...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Enterprise Header */}
@@ -45,7 +54,7 @@ export const TraderDashboard: React.FC = () => {
           <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold uppercase">
             <Scale className="h-3.5 w-3.5" /> Registered Commercial Stakeholder
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black">{user?.organization_name || user?.full_name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-black">{user?.organization_name || user?.full_name || 'Commercial Stakeholder Portal'}</h1>
           <p className="text-slate-300 text-xs sm:text-sm">
             Trader Portal • Location: Barhi Sub-Division, Jharkhand • Legal Metrology Act 2009 Compliance
           </p>

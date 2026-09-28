@@ -36,6 +36,15 @@ export const LMODashboard: React.FC = () => {
     i.status === 'CERTIFICATE_ISSUED' || i.status === 'PASSED' || i.status === 'FAILED'
   );
 
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+        <p className="text-xs text-slate-500 font-semibold">Loading LMO Field Verification Queue...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Officer Mobile-friendly Banner */}
@@ -45,7 +54,7 @@ export const LMODashboard: React.FC = () => {
             <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
               LMO Field Officer Active
             </span>
-            <h1 className="text-xl sm:text-2xl font-black">{user?.full_name}</h1>
+            <h1 className="text-xl sm:text-2xl font-black">{user?.full_name || 'Inspector Amit Sharma'}</h1>
             <p className="text-xs text-slate-300">
               Jurisdiction: <b>{user?.jurisdiction || 'Barhi / Hazaribagh'}</b> • Officer Code: <b>{user?.officer_code || 'LMO-JH-001'}</b>
             </p>

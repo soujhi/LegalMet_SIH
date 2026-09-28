@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  quickLogin: (role: 'ADMIN' | 'LMO' | 'TRADER') => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  quickLogin: (role: 'ADMIN' | 'LMO' | 'TRADER') => Promise<User>;
   logout: () => void;
 }
 
@@ -38,14 +38,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const res = await ApiClient.login({ email, password });
     ApiClient.setToken(res.access_token);
     setToken(res.access_token);
     setUser(res.user);
+    return res.user;
   };
 
-  const quickLogin = async (role: 'ADMIN' | 'LMO' | 'TRADER') => {
+  const quickLogin = async (role: 'ADMIN' | 'LMO' | 'TRADER'): Promise<User> => {
     let email = 'admin@legalmet.gov.in';
     let pass = 'Admin@123';
     if (role === 'LMO') {
@@ -55,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email = 'trader.patel@agrotraders.in';
       pass = 'Trader@123';
     }
-    await login(email, pass);
+    return await login(email, pass);
   };
 
   const logout = () => {
