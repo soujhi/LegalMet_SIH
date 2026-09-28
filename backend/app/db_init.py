@@ -263,7 +263,7 @@ def init_db():
         if json_path.exists():
             with open(json_path, "r", encoding="utf-8") as f:
                 records = json.load(f)
-                for item in records[:30]:  # Seed initial batch of Jharkhand government records
+                for item in records:  # Seed all 100 Jharkhand government records
                     ocr_rec = OCRDocument(
                         source_file=f"jharkhand_{item.get('certificate_no', 'cert')}.pdf",
                         certificate_no=item.get("certificate_no"),
