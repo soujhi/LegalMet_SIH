@@ -46,15 +46,45 @@ app.include_router(ocr.router, prefix=settings.API_V1_STR)
 app.include_router(analytics.router, prefix=settings.API_V1_STR)
 app.include_router(audit.router, prefix=settings.API_V1_STR)
 
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
+
+# Locate bundled frontend if available
+FRONTEND_DIST_CANDIDATES = [
+    Path(__file__).resolve().parent.parent / "static",
+    Path(__file__).resolve().parent.parent.parent / "frontend" / "dist",
+    Path("frontend/dist"),
+    Path("../frontend/dist"),
+    Path("backend/static"),
+]
+FRONTEND_DIST = next((d for d in FRONTEND_DIST_CANDIDATES if (d / "index.html").exists()), None)
+
+if FRONTEND_DIST and (FRONTEND_DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+
 @app.on_event("startup")
 def on_startup():
     init_db()
 
 @app.get("/")
 def root():
+    if FRONTEND_DIST and (FRONTEND_DIST / "index.html").exists():
+        return FileResponse(FRONTEND_DIST / "index.html")
     return {
         "project": "LegalMet Verify",
         "status": "ONLINE",
         "docs_url": "/docs",
         "public_verification_url": "/api/public/verify/{certificate_number}"
     }
+
+@app.get("/{full_path:path}")
+def serve_frontend_spa(full_path: str):
+    if full_path.startswith("api") or full_path.startswith("storage") or full_path.startswith("docs") or full_path == "openapi.json":
+        raise HTTPException(status_code=404, detail="Not Found")
+    if FRONTEND_DIST:
+        target = FRONTEND_DIST / full_path
+        if target.is_file():
+            return FileResponse(target)
+        return FileResponse(FRONTEND_DIST / "index.html")
+    raise HTTPException(status_code=404, detail="Not Found")
+
