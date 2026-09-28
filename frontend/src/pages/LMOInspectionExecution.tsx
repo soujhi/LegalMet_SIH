@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ApiClient } from '../api/client';
+import { ApiClient, API_BASE } from '../api/client';
 import { Application, TestObservation, RuleEvaluationResult } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { 
@@ -182,7 +182,7 @@ export const LMOInspectionExecution: React.FC = () => {
                 </Link>
                 {completionResult.pdf_url && (
                   <a
-                    href={`/api/certificates/${app.id}/pdf`}
+                    href={`${API_BASE}/certificates/${app.id}/pdf`}
                     target="_blank"
                     rel="noreferrer"
                     className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ApiClient } from '../api/client';
+import { ApiClient, API_BASE } from '../api/client';
 import { InstrumentModel, DataQualityStats } from '../types';
 import {
   ShieldCheck,
@@ -355,7 +355,7 @@ export const AdminDataQuality: React.FC = () => {
                       <Edit3 className="w-3 h-3" /> Review & Edit
                     </button>
                     <a
-                      href={`/api/instruments/models/${m.id}/source-pdf`}
+                      href={`${API_BASE}/instruments/models/${m.id}/source-pdf`}
                       target="_blank"
                       rel="noreferrer"
                       className="p-1 text-slate-500 hover:text-blue-600 inline-block"
@@ -493,7 +493,7 @@ export const AdminDataQuality: React.FC = () => {
 
               <div className="flex justify-between items-center pt-3 border-t border-slate-100">
                 <a
-                  href={`/api/instruments/models/${editingModel.id}/source-pdf`}
+                  href={`${API_BASE}/instruments/models/${editingModel.id}/source-pdf`}
                   target="_blank"
                   rel="noreferrer"
                   className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"

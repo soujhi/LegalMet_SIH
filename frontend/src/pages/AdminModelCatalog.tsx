@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ApiClient } from '../api/client';
+import { ApiClient, API_BASE } from '../api/client';
 import { InstrumentModel } from '../types';
 import {
   FileText,
@@ -56,7 +56,7 @@ export const AdminModelCatalog: React.FC = () => {
   };
 
   const getPdfUrl = (model: InstrumentModel) => {
-    return `/api/instruments/models/${model.id}/source-pdf`;
+    return `${API_BASE}/instruments/models/${model.id}/source-pdf`;
   };
 
   return (

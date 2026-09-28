@@ -4,7 +4,7 @@ import {
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, Download, 
   Calendar, MapPin, Award, Scale, Cpu, Search, Lock, ArrowLeft, RefreshCw 
 } from 'lucide-react';
-import { ApiClient } from '../api/client';
+import { ApiClient, API_BASE } from '../api/client';
 import { PublicVerification } from '../types';
 
 export const PublicVerify: React.FC = () => {
@@ -249,7 +249,7 @@ export const PublicVerify: React.FC = () => {
                   {data.model_approval_reference.source_pdf && (
                     <div className="pt-1">
                       <a
-                        href={`http://127.0.0.1:8000/api/instruments/models/${data.model_approval_reference.model_id}/source-pdf`}
+                        href={`${API_BASE}/instruments/models/${data.model_approval_reference.model_id}/source-pdf`}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 underline"

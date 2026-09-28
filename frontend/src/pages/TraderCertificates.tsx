@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiClient } from '../api/client';
+import { ApiClient, API_BASE } from '../api/client';
 import { Certificate } from '../types';
 import { Award, Download, QrCode, Calendar, Scale, MapPin, CheckCircle2, Lock } from 'lucide-react';
 
@@ -94,7 +94,7 @@ export const TraderCertificates: React.FC = () => {
                 </Link>
                 {cert.pdf_url && (
                   <a
-                    href={`/api/certificates/${cert.id}/pdf`}
+                    href={`${API_BASE}/certificates/${cert.id}/pdf`}
                     target="_blank"
                     rel="noreferrer"
                     className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
