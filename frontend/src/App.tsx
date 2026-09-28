@@ -31,7 +31,18 @@ import { LMOInspectionExecution } from './pages/LMOInspectionExecution';
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ children, allowedRoles }) => {
   const { user, isLoading } = useAuth();
 
-  if (isLoading) {
+  const activeUser = user || (() => {
+    try {
+      const stored = localStorage.getItem('legalmet_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const token = localStorage.getItem('legalmet_token');
+
+  if (isLoading && !activeUser) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-xs text-slate-500 gap-2">
         <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
@@ -40,16 +51,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
     );
   }
 
-  if (!user) {
+  if (!activeUser || !token) {
     return <Navigate to="/login" replace />;
   }
 
   // Admin has overarching supervisory access across all portals
-  const isAllowed = !allowedRoles || allowedRoles.includes(user.role) || user.role === 'ADMIN';
+  const isAllowed = !allowedRoles || allowedRoles.includes(activeUser.role) || activeUser.role === 'ADMIN';
 
   if (!isAllowed) {
-    if (user.role === 'TRADER') return <Navigate to="/trader/dashboard" replace />;
-    if (user.role === 'LMO') return <Navigate to="/lmo/dashboard" replace />;
+    if (activeUser.role === 'TRADER') return <Navigate to="/trader/dashboard" replace />;
+    if (activeUser.role === 'LMO') return <Navigate to="/lmo/dashboard" replace />;
     return <Navigate to="/admin/dashboard" replace />;
   }
 

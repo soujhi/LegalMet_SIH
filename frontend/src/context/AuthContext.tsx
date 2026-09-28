@@ -14,9 +14,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('legalmet_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState<string | null>(localStorage.getItem('legalmet_token'));
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -24,15 +31,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (storedToken) {
         try {
           const userData = await ApiClient.getMe();
+          localStorage.setItem('legalmet_user', JSON.stringify(userData));
           setUser(userData);
           setToken(storedToken);
         } catch (err) {
           ApiClient.clearToken();
+          localStorage.removeItem('legalmet_user');
           setUser(null);
           setToken(null);
         }
       }
-      setIsLoading(false);
     };
 
     initAuth();
@@ -41,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<User> => {
     const res = await ApiClient.login({ email, password });
     ApiClient.setToken(res.access_token);
+    localStorage.setItem('legalmet_user', JSON.stringify(res.user));
     setToken(res.access_token);
     setUser(res.user);
     return res.user;
@@ -61,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     ApiClient.clearToken();
+    localStorage.removeItem('legalmet_user');
     setToken(null);
     setUser(null);
   };

@@ -20,12 +20,20 @@ export const PublicHome: React.FC = () => {
   };
 
   const handleLaunch = async (role: 'TRADER' | 'ADMIN' | 'LMO', path: string) => {
+    const storedUserStr = localStorage.getItem('legalmet_user');
+    const storedRole = storedUserStr ? JSON.parse(storedUserStr)?.role : user?.role;
+    if (storedRole === role) {
+      navigate(path);
+      return;
+    }
+
     setLaunchingRole(role);
     try {
       await quickLogin(role);
       navigate(path);
     } catch (err) {
       console.error('Portal launch failed:', err);
+      navigate(path);
     } finally {
       setLaunchingRole(null);
     }
@@ -38,9 +46,6 @@ export const PublicHome: React.FC = () => {
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-400/30 text-amber-400 text-xs font-semibold tracking-wide uppercase">
-              <ShieldCheck className="h-4 w-4" /> Official SIH26036 Prototype
-            </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
               Digital Lifecycle Management for <br className="hidden sm:inline" />
               <span className="text-amber-400">Legal Metrology Verification</span>
@@ -104,67 +109,118 @@ export const PublicHome: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Trader Card */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div 
+            onClick={() => handleLaunch('TRADER', '/trader/dashboard')}
+            className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-300 transition-all flex flex-col justify-between cursor-pointer group"
+          >
             <div>
-              <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-bold mb-4">
+              <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform">
                 <Award className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Trader / Business User</h3>
+              <h3 className="text-lg font-bold text-slate-900 group-hover:text-orange-600 transition-colors">Trader / Business User</h3>
               <p className="text-sm text-slate-600 mt-2">
                 Register weighing instruments against DoCA Approved Model Master, submit verification applications, track scrutiny timeline, and download digital certificates.
               </p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="mt-6 pt-4 border-t border-slate-100">
               <button
-                onClick={() => handleLaunch('TRADER', '/trader/dashboard')}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLaunch('TRADER', '/trader/dashboard');
+                }}
                 disabled={launchingRole === 'TRADER'}
-                className="text-sm font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1"
+                className="w-full py-2.5 px-4 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2"
               >
-                {launchingRole === 'TRADER' ? 'Opening...' : 'Launch Trader Portal'} <ArrowRight className="h-4 w-4" />
+                {launchingRole === 'TRADER' ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Opening Trader Portal...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Launch Trader Portal</span>
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
             </div>
           </div>
 
           {/* Admin Card */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div 
+            onClick={() => handleLaunch('ADMIN', '/admin/dashboard')}
+            className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all flex flex-col justify-between cursor-pointer group"
+          >
             <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold mb-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform">
                 <ShieldCheck className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Legal Metrology Admin</h3>
+              <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Legal Metrology Admin</h3>
               <p className="text-sm text-slate-600 mt-2">
                 Scrutinize trader applications (Approve / Query / Reject), schedule and assign LMO officers, inspect deterministic rules, and manage legacy OCR records.
               </p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="mt-6 pt-4 border-t border-slate-100">
               <button
-                onClick={() => handleLaunch('ADMIN', '/admin/dashboard')}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLaunch('ADMIN', '/admin/dashboard');
+                }}
                 disabled={launchingRole === 'ADMIN'}
-                className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2"
               >
-                {launchingRole === 'ADMIN' ? 'Opening...' : 'Launch Admin Portal'} <ArrowRight className="h-4 w-4" />
+                {launchingRole === 'ADMIN' ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Opening Admin Portal...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Launch Admin Portal</span>
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
             </div>
           </div>
 
           {/* LMO Officer Card */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div 
+            onClick={() => handleLaunch('LMO', '/lmo/dashboard')}
+            className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-lg hover:border-emerald-300 transition-all flex flex-col justify-between cursor-pointer group"
+          >
             <div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold mb-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform">
                 <Smartphone className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">LMO / GATC Field Officer</h3>
+              <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">LMO / GATC Field Officer</h3>
               <p className="text-sm text-slate-600 mt-2">
                 Mobile-first field verification interface. Captures GPS coordinates, timestamps, test observations (Zero, Half, Max load), executes deterministic MPE evaluation, and issues QR certificates.
               </p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="mt-6 pt-4 border-t border-slate-100">
               <button
-                onClick={() => handleLaunch('LMO', '/lmo/dashboard')}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLaunch('LMO', '/lmo/dashboard');
+                }}
                 disabled={launchingRole === 'LMO'}
-                className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2"
               >
-                {launchingRole === 'LMO' ? 'Opening...' : 'Launch LMO Field App'} <ArrowRight className="h-4 w-4" />
+                {launchingRole === 'LMO' ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Opening LMO App...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Launch LMO Field App</span>
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -227,7 +283,7 @@ export const PublicHome: React.FC = () => {
       <footer className="mt-auto bg-[#0F2942] text-slate-400 text-xs py-8 px-4 border-t border-slate-800">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <span className="font-bold text-slate-200">LegalMet Verify</span> — SIH26036 Online Verification System for Weighing and Measuring Instruments.
+            <span className="font-bold text-slate-200">LegalMet Verify</span> — Online Verification System for Weighing and Measuring Instruments.
           </div>
           <div>
             Department of Legal Metrology • Government of India & State Directorates

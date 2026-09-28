@@ -14,7 +14,7 @@ from app.routers import (
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="SIH26036 — Online Verification System for Weighing and Measuring Instruments API"
+    description="Online Verification System for Weighing and Measuring Instruments API"
 )
 
 # Enable CORS for local development and production frontends
@@ -53,7 +53,7 @@ def on_startup():
 @app.get("/")
 def root():
     return {
-        "project": "LegalMet Verify (SIH26036)",
+        "project": "LegalMet Verify",
         "status": "ONLINE",
         "docs_url": "/docs",
         "public_verification_url": "/api/public/verify/{certificate_number}"

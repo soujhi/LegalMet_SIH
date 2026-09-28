@@ -55,7 +55,7 @@ export const Login: React.FC = () => {
           LegalMet <span className="text-amber-500">Verify</span>
         </h2>
         <p className="mt-1 text-center text-xs text-slate-600 font-medium uppercase tracking-wider">
-          Official Legal Metrology Verification System (SIH26036)
+          Official Legal Metrology Verification System
         </p>
       </div>
 
