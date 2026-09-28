@@ -20,7 +20,13 @@ if IS_SERVERLESS:
             pass
 else:
     STORAGE_ROOT = BASE_DIR / "storage"
-    DEFAULT_DB = BASE_DIR.parent / "database" / "legalmet.db"
+    candidate_dbs = [
+        BASE_DIR.parent / "database" / "legalmet.db",
+        BASE_DIR / "database" / "legalmet.db",
+        Path("database/legalmet.db"),
+        Path("../database/legalmet.db")
+    ]
+    DEFAULT_DB = next((p for p in candidate_dbs if p.exists()), candidate_dbs[0])
 
 UPLOADS_DIR = STORAGE_ROOT / "uploads"
 CERTIFICATES_DIR = STORAGE_ROOT / "certificates"

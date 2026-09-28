@@ -9,7 +9,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/legalmet_db
-      - SECRET_KEY=legalmet-super-secret-production-key-sih26036-2026
+      - SECRET_KEY=legalmet-super-secret-production-key-2026
       - BASE_URL=http://localhost:8000
       - FRONTEND_URL=http://localhost:3000
     depends_on:
