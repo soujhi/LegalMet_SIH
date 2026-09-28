@@ -83,36 +83,6 @@ export const PublicVerify: React.FC = () => {
           </form>
         </div>
 
-        {/* Quick Sample Selector Bar */}
-        <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2 shadow-xs">
-          <span className="font-semibold text-slate-700">Verified Test Samples:</span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleQuickVerify("141701")}
-              className="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold border border-blue-200"
-            >
-              141701 (State Record)
-            </button>
-            <button
-              onClick={() => handleQuickVerify("141710")}
-              className="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold border border-blue-200"
-            >
-              141710 (State Record)
-            </button>
-            <button
-              onClick={() => handleQuickVerify("LM/JH/2026/520900")}
-              className="px-2 py-1 rounded bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold border border-emerald-200"
-            >
-              LM/JH/2026/520900 (QR Digital)
-            </button>
-            <button
-              onClick={() => handleQuickVerify("520900")}
-              className="px-2 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold border border-slate-200"
-            >
-              520900
-            </button>
-          </div>
-        </div>
 
         {isLoading ? (
           <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center shadow-sm">
