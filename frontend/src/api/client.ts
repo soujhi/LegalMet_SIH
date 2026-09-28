@@ -28,14 +28,24 @@ export class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch (networkErr: any) {
+      throw new Error(`Cannot connect to backend (${API_BASE}). Please verify your backend URL is active.`);
+    }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Request failed' }));
-      throw new Error(errorData.detail || `HTTP Error ${response.status}`);
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      if (isJson) {
+        const errorData = await response.json().catch(() => ({ detail: 'Request failed' }));
+        throw new Error(errorData.detail || `HTTP Error ${response.status}`);
+      } else {
+        throw new Error(`Backend unavailable (HTTP ${response.status}). Please check VITE_API_BASE_URL setting.`);
+      }
     }
 
     return response.json();
